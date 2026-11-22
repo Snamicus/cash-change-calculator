@@ -1,0 +1,102 @@
+<!doctype html>
+<html lang="en">
+<head>
+<meta charset="utf-8">
+<meta name="viewport" content="width=device-width, initial-scale=1, maximum-scale=1, user-scalable=no">
+<meta name="theme-color" content="#111827">
+<meta name="apple-mobile-web-app-capable" content="yes">
+<meta name="apple-mobile-web-app-status-bar-style" content="black-translucent">
+<meta name="apple-mobile-web-app-title" content="Cash Calculator">
+<link rel="manifest" href="./manifest.json">
+<link rel="apple-touch-icon" href="./icon.svg">
+<title>Cash Change Calculator</title>
+<style>
+:root{color-scheme:dark;--bg:#0b1220;--panel:#151f31;--muted:#9aa8bd;--text:#f8fafc;--accent:#38bdf8;--green:#34d399;--line:#29364b}
+*{box-sizing:border-box}
+body{margin:0;background:linear-gradient(160deg,#111c30,#080d17 65%);font-family:-apple-system,BlinkMacSystemFont,"Segoe UI",sans-serif;color:var(--text);min-height:100vh;padding:22px 16px 32px}
+main{max-width:480px;margin:0 auto}
+header{text-align:center;margin:12px 0 24px}
+h1{font-size:25px;margin:0 0 6px;letter-spacing:-.5px}
+header p{color:var(--muted);margin:0;font-size:14px}
+.card{background:rgba(21,31,49,.96);border:1px solid var(--line);border-radius:20px;padding:18px;margin:14px 0;box-shadow:0 12px 30px #0003}
+label{display:block;color:#cbd5e1;font-size:14px;font-weight:650;margin:0 0 8px}
+input{width:100%;height:56px;border-radius:13px;border:1px solid #3a4961;background:#0d1727;color:white;padding:0 15px;font-size:24px;font-weight:650;outline:none}
+input:focus{border-color:var(--accent);box-shadow:0 0 0 3px #38bdf822}
+.field{margin-bottom:17px}.field:last-child{margin-bottom:0}
+.suffix{position:relative}.suffix input{padding-left:34px}.suffix:before{content:"$";position:absolute;left:15px;top:16px;color:var(--muted);font-size:22px}
+.taxrow{display:flex;align-items:center;justify-content:space-between;gap:12px}
+.taxrow label{margin:0}
+.taxinput{width:112px;height:44px;font-size:18px;text-align:right;padding:0 12px}
+.taxinput-wrap{position:relative}.taxinput-wrap:after{content:"%";position:absolute;right:12px;top:12px;color:var(--muted);pointer-events:none}
+.taxinput{padding-right:30px}
+.summary{display:flex;justify-content:space-between;align-items:center;padding:9px 0;color:#cbd5e1;font-size:16px}
+.summary strong{color:white;font-variant-numeric:tabular-nums}
+.summary.total{border-top:1px solid var(--line);margin-top:7px;padding-top:16px;font-size:18px;font-weight:750}
+.summary.total strong{font-size:22px}
+.change{background:linear-gradient(135deg,#064e3b,#0f766e);border:1px solid #10b98166;border-radius:18px;padding:21px 16px;text-align:center;margin-top:15px}
+.change .caption{font-size:13px;letter-spacing:1.1px;font-weight:800;color:#bbf7d0}
+.change .amount{font-size:42px;font-weight:850;letter-spacing:-1px;margin-top:6px;font-variant-numeric:tabular-nums}
+.status{font-size:13px;color:#d1fae5;margin-top:5px;min-height:18px}
+button{width:100%;border:0;border-radius:14px;height:54px;background:var(--accent);color:#062033;font-size:17px;font-weight:800;margin-top:15px}
+button:active{transform:scale(.99)}
+.secondary{background:#263449;color:#e2e8f0;margin-top:10px}
+.note{text-align:center;color:var(--muted);font-size:12px;margin-top:18px;line-height:1.5}
+@media (max-width:360px){body{padding:16px 12px}.card{padding:15px}.change .amount{font-size:36px}}
+</style>
+</head>
+<body>
+<main>
+<header><h1>Cash Change Calculator</h1><p>Enter the price and cash received to calculate change.</p></header>
+<section class="card">
+  <div class="field">
+    <label for="price">Product price</label>
+    <div class="suffix"><input id="price" type="number" inputmode="decimal" min="0" step="0.01" placeholder="0.00" value="30"></div>
+  </div>
+  <div class="field taxrow">
+    <label for="tax">Sales tax</label>
+    <div class="taxinput-wrap"><input class="taxinput" id="tax" type="number" inputmode="decimal" min="0" step="0.01" value="6" aria-label="Sales tax percentage"></div>
+  </div>
+  <div class="field">
+    <label for="cash">Cash given by customer</label>
+    <div class="suffix"><input id="cash" type="number" inputmode="decimal" min="0" step="0.01" placeholder="0.00" value="50"></div>
+  </div>
+</section>
+<section class="card">
+  <div class="summary"><span>Product price</span><strong id="subtotal">$30.00</strong></div>
+  <div class="summary"><span>Tax</span><strong id="taxamount">$1.80</strong></div>
+  <div class="summary total"><span>Total</span><strong id="total">$31.80</strong></div>
+  <div class="change">
+    <div class="caption">CHANGE TO GIVE BACK</div>
+    <div class="amount" id="change">$18.20</div>
+    <div class="status" id="status">Ready</div>
+  </div>
+  <button id="calculate" type="button">Calculate change</button>
+  <button id="reset" class="secondary" type="button">Reset for next customer</button>
+</section>
+<div class="note">Tax is set to 6% by default. Change the percentage any time. Amounts are rounded to the nearest cent.</div>
+</main>
+<script>
+if ("serviceWorker" in navigator) { window.addEventListener("load", () => navigator.serviceWorker.register("./sw.js").catch(() => {})); }
+const price=document.getElementById('price'), tax=document.getElementById('tax'), cash=document.getElementById('cash');
+const money=n=>new Intl.NumberFormat('en-US',{style:'currency',currency:'USD'}).format(n);
+function val(el){const n=Number.parseFloat(el.value);return Number.isFinite(n)&&n>0?n:0}
+function calculate(){
+ const p=val(price), rate=val(tax), received=val(cash);
+ const taxAmount=Math.round(p*rate)/100;
+ const total=Math.round((p+taxAmount)*100)/100;
+ const change=Math.round((received-total)*100)/100;
+ document.getElementById('subtotal').textContent=money(p);
+ document.getElementById('taxamount').textContent=money(taxAmount);
+ document.getElementById('total').textContent=money(total);
+ const changeEl=document.getElementById('change'), status=document.getElementById('status');
+ if(cash.value.trim()===''){changeEl.textContent=money(0);status.textContent='Enter the cash received';}
+ else if(change<0){changeEl.textContent=money(0);status.textContent='Customer still owes '+money(Math.abs(change));}
+ else {changeEl.textContent=money(change);status.textContent='Give this amount back to the customer';}
+}
+[price,tax,cash].forEach(el=>el.addEventListener('input',calculate));
+document.getElementById('calculate').addEventListener('click',calculate);
+document.getElementById('reset').addEventListener('click',()=>{price.value='';cash.value='';tax.value='6';calculate();price.focus();});
+calculate();
+</script>
+</body>
+</html>
